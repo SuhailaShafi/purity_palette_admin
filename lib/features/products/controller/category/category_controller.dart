@@ -11,8 +11,6 @@ class CategoryController extends GetxController {
   var selectedCategory = CategoryType.Makeup.obs;
   var categories = <CategoryType>[].obs;
   RxList hairCategoriesList = [].obs;
-  RxList skinCategoriesList = [].obs;
-  RxList makeupCategoriesList = [].obs;
   Rx<File> selectedImage = File('').obs; // Store the selected image file
   Rx<CategoryType> selectedType = CategoryType.Hair.obs;
   void setSelectedCategory(CategoryType category) {
@@ -42,21 +40,25 @@ class CategoryController extends GetxController {
   Future<void> saveCategoryToFirestore(
       String categoryName, String imageFile) async {
     try {
-      print('imagefile..................... $imageFile');
 // Upload image to Firebase Storage
       final storageRef = FirebaseStorage.instance
           .ref()
           .child('category_images')
           .child('${DateTime.now().millisecondsSinceEpoch}');
-      print('imagefile.....................storage ref ');
-      final uploadTask = storageRef.putFile(File(imageFile));
-      print('imagefile..................... upload task');
-      final snapshot = await uploadTask.whenComplete(() => null);
-      print('imagefile..................... snapshot');
-      final imageUrl = await snapshot.ref.getDownloadURL();
-      print('imagefile..................... $imageUrl');
 
-      await FirebaseFirestore.instance.collection('categories').add({
+      final uploadTask = storageRef.putFile(File(imageFile));
+      final snapshot = await uploadTask.whenComplete(() => null);
+      final imageUrl = await snapshot.ref.getDownloadURL();
+
+      // Generate a unique ID for the category
+      String categoryId =
+          FirebaseFirestore.instance.collection('categories').doc().id;
+
+      await FirebaseFirestore.instance
+          .collection('categories')
+          .doc(categoryId)
+          .set({
+        'id': categoryId,
         'name': categoryName,
         'categoryType': selectedCategory.value.toString().split('.').last,
         'imageUrl': imageUrl,
@@ -67,7 +69,7 @@ class CategoryController extends GetxController {
     }
   }
 
-  Future<void> fetchCategoryData() async {
+  Future<void> fetchCategoryData(CategoryType selectedType) async {
     try {
       final FirebaseFirestore db = FirebaseFirestore.instance;
       final QuerySnapshot querySnapshot =
@@ -75,7 +77,7 @@ class CategoryController extends GetxController {
 
       final List<Category> fetchedcatlist = querySnapshot.docs
           .map((doc) => Category.fromJson(doc.data() as Map<String, dynamic>))
-          .where((category) => category.categoryType == CategoryType.Hair)
+          .where((category) => category.categoryType == selectedType)
           .toList();
       hairCategoriesList.assignAll(fetchedcatlist);
 
@@ -87,43 +89,19 @@ class CategoryController extends GetxController {
     }
   }
 
-  Future<void> fetchCategoryDataskin() async {
+  // Method to delete a category
+  Future<void> deleteCategory(int id) async {
     try {
-      final FirebaseFirestore db = FirebaseFirestore.instance;
-      final QuerySnapshot querySnapshot =
-          await db.collection('categories').get();
-
-      final List<Category> fetchedcatlist = querySnapshot.docs
-          .map((doc) => Category.fromJson(doc.data() as Map<String, dynamic>))
-          .where((category) => category.categoryType == CategoryType.Skin)
-          .toList();
-      skinCategoriesList.assignAll(fetchedcatlist);
-
-      print(
-          'skincatlist$hairCategoriesList'); // Return true to indicate successful data fetching
-      print('skin category data fetched successfully!');
+      print("deleted Id is ${id.toString()}");
+      await FirebaseFirestore.instance
+          .collection('categories')
+          .doc(id.toString())
+          .delete();
+      // Remove the deleted category from the list
+      //hairCategoriesList.remove(category);
+      print('Category deleted successfully!');
     } catch (e) {
-      print('Error fetching skin category data: $e');
-    }
-  }
-
-  Future<void> fetchCategoryDatamakeup() async {
-    try {
-      final FirebaseFirestore db = FirebaseFirestore.instance;
-      final QuerySnapshot querySnapshot =
-          await db.collection('categories').get();
-
-      final List<Category> fetchedcatlist = querySnapshot.docs
-          .map((doc) => Category.fromJson(doc.data() as Map<String, dynamic>))
-          .where((category) => category.categoryType == CategoryType.Makeup)
-          .toList();
-      makeupCategoriesList.assignAll(fetchedcatlist);
-
-      print(
-          'makeupcatlist$hairCategoriesList'); // Return true to indicate successful data fetching
-      print('makeup category data fetched successfully!');
-    } catch (e) {
-      print('Error fetching makeup category data: $e');
+      print('Error deleting category: $e');
     }
   }
 }

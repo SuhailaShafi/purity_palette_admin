@@ -25,13 +25,11 @@ class HairCatList extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final CategoryController categoryController = Get.put(CategoryController());
-    categoryController.fetchCategoryData();
+    categoryController.fetchCategoryData(CategoryType.Hair);
     return Obx(() => categoryController.hairCategoriesList.isNotEmpty
         ? CategoryGridView(
             cat: categoryController.hairCategoriesList,
           )
-        : CategoryGridView(
-            cat:
-                skinCategory)); // Show loading indicator if data is not yet fetched
+        : CircularProgressIndicator()); // Show loading indicator if data is not yet fetched
   }
 }
